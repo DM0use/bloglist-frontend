@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react'
 import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
+import Notification from './components/Notification'
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
   const [user, setUser] = useState(null)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [errorMessage, setErrorMessage] = useState(null)
   const [newTitle, setNewTitle] = useState('')
   const [newAuthor, setNewAuthor] = useState('')
   const [newUrl, setNewUrl] = useState('')
+  const [message, setMessage] = useState(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     blogService.getAll().then((blogs) => setBlogs(blogs))
@@ -32,10 +34,17 @@ const App = () => {
       setUser(user)
       setUsername('')
       setPassword('')
-    } catch (exception) {
-      setErrorMessage('Wrong credentials')
+      setMessage('login successful')
+      setError(false)
       setTimeout(() => {
-        setErrorMessage(null)
+        setMessage(null)
+      }, 5000)
+    } catch (exception) {
+      setMessage('Wrong credentials')
+      setError(true)
+      setTimeout(() => {
+        setMessage(null)
+        setError(false)
       }, 5000)
     }
   }
@@ -43,6 +52,11 @@ const App = () => {
   const handleLogout = () => {
     setUser(null)
     window.localStorage.removeItem('loggedBlogListUser')
+    setMessage('user logged out')
+    setError(false)
+    setTimeout(() => {
+      setMessage(null)
+    }, 5000)
   }
 
   const handleTitleChange = (event) => {
@@ -57,7 +71,7 @@ const App = () => {
     setNewUrl(event.target.value)
   }
 
-  const addBlog = (event) => {
+  const addBlog = async (event) => {
     event.preventDefault()
     const blogObject = {
       title: newTitle,
@@ -65,12 +79,25 @@ const App = () => {
       url: newUrl,
     }
 
-    blogService.create(blogObject).then((returnedBlog) => {
+    try {
+      const returnedBlog = await blogService.create(blogObject)
+
       setBlogs(blogs.concat(returnedBlog))
       setNewTitle('')
       setNewAuthor('')
       setNewUrl('')
-    })
+      setMessage(`blog ${returnedBlog.title} by ${returnedBlog.author} added`)
+      setTimeout(() => {
+        setMessage(null)
+      }, 5000)
+    } catch (exception) {
+      setMessage('failed to save blog')
+      setError(true)
+      setTimeout(() => {
+        setMessage(null)
+        setError(false)
+      }, 5000)
+    }
   }
 
   const loginForm = () => (
@@ -120,6 +147,7 @@ const App = () => {
   return (
     <div>
       <h2>blogs</h2>
+      <Notification message={message} error={error} />
       {user && (
         <div>
           <p>{user.name} logged in</p>
